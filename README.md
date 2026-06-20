@@ -59,8 +59,11 @@ GND ──────────────────── GND（共通グ
 | `kCellWidth` | 12 | 1文字の幅（ピクセル） |
 | `kCellHeight` | 16 | 1文字の高さ（ピクセル） |
 | `kTabWidth` | 8 | タブ幅（文字数） |
+| `kMaxCsiBufferSize` | 32 | CSIシーケンスの最大バッファサイズ |
 | `kCursorBlinkMs` | 500 | カーソル点滅の周期（ミリ秒） |
 | `kLoopDelayMs` | 2 | メインループの待機時間（ミリ秒） |
+| `kDefaultForeground` | `TFT_GREEN` | デフォルト文字色 |
+| `kDefaultBackground` | `TFT_BLACK` | デフォルト背景色 |
 
 ---
 
