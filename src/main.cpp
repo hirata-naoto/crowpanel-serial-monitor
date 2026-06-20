@@ -1,3 +1,6 @@
+// Elecrow CrowPanel 5インチ向け VT100 シリアルモニター
+// USB CDC ↔ UART1 ブリッジ＋TFT液晶ターミナル表示
+
 #include <Arduino.h>
 
 #include <algorithm>
@@ -9,29 +12,39 @@
 #include "LGFX_Elecrow_5inch.hpp"
 
 namespace {
-constexpr uint32_t kUsbBaudRate = 115200;
-constexpr uint32_t kTargetBaudRate = 115200;
-constexpr int kTargetRxPin = 44;
-constexpr int kTargetTxPin = 43;
-constexpr bool kLocalEcho = true;
-constexpr uint8_t kCellWidth = 12;
-constexpr uint8_t kCellHeight = 16;
-constexpr uint8_t kTabWidth = 8;
-constexpr size_t kMaxCsiBufferSize = 32;
-constexpr uint32_t kCursorBlinkMs = 500;
-constexpr uint32_t kLoopDelayMs = 2;
-constexpr uint16_t kDefaultForeground = TFT_GREEN;
-constexpr uint16_t kDefaultBackground = TFT_BLACK;
+// ----- 通信設定 -----
+constexpr uint32_t kUsbBaudRate = 115200;    // USB CDC（PCとの通信）のボーレート
+constexpr uint32_t kTargetBaudRate = 115200; // UART1（外部デバイスとの通信）のボーレート
+constexpr int kTargetRxPin = 44;             // UART1 RXピン（外部デバイスTXと接続）
+constexpr int kTargetTxPin = 43;             // UART1 TXピン（外部デバイスRXと接続）
+constexpr bool kLocalEcho = true;            // trueにするとPC入力を液晶にも表示
+
+// ----- 表示設定 -----
+constexpr uint8_t kCellWidth = 12;           // 1文字あたりの幅（ピクセル）
+constexpr uint8_t kCellHeight = 16;          // 1文字あたりの高さ（ピクセル）
+constexpr uint8_t kTabWidth = 8;             // タブストップの幅（文字数）
+constexpr size_t kMaxCsiBufferSize = 32;     // CSIシーケンスの最大バッファサイズ
+constexpr uint32_t kCursorBlinkMs = 500;     // カーソル点滅の周期（ミリ秒）
+constexpr uint32_t kLoopDelayMs = 2;         // メインループの待機時間（ミリ秒）
+constexpr uint16_t kDefaultForeground = TFT_GREEN; // デフォルト文字色（緑）
+constexpr uint16_t kDefaultBackground = TFT_BLACK; // デフォルト背景色（黒）
 }  // namespace
 
+// TFT液晶へのターミナル描画を管理するクラス。
+// 文字セル配列の管理、VT100エスケープシーケンスの解析、
+// ダーティフラグによる差分描画を担当する。
 class TerminalView {
  public:
+  // 1文字分の描画情報
   struct Cell {
-    char ch = ' ';
-    uint16_t fg = kDefaultForeground;
-    uint16_t bg = kDefaultBackground;
+    char ch = ' ';                     // 表示する文字（デフォルトはスペース）
+    uint16_t fg = kDefaultForeground;  // 文字色
+    uint16_t bg = kDefaultBackground;  // 背景色
   };
 
+  // ターミナルを初期化し、ディスプレイに接続する。
+  // ディスプレイの解像度からカラム数・行数を計算して文字セル配列を確保し、
+  // 起動メッセージを表示する。
   void begin(LGFX& display) {
     display_ = &display;
     display_->init();
@@ -63,6 +76,8 @@ class TerminalView {
     render(true);
   }
 
+  // 受信した1バイトをターミナル状態機械に渡す。
+  // 通常文字・制御文字・エスケープシーケンスを判別して処理する。
   void feed(uint8_t byte) {
     switch (state_) {
       case ParseState::kGround:
@@ -77,6 +92,9 @@ class TerminalView {
     }
   }
 
+  // ダーティフラグが立っている行のみ再描画する。
+  // force=true の場合は全行を強制再描画する。
+  // カーソル点滅の更新もここで行う。
   void render(bool force = false) {
     if (millis() - last_blink_ms_ >= kCursorBlinkMs) {
       blink_state_ = !blink_state_;
@@ -99,6 +117,7 @@ class TerminalView {
     }
   }
 
+  // ヌル終端文字列を1バイトずつ feed() に渡す。
   void writeString(const char* text) {
     while (*text != '\0') {
       feed(static_cast<uint8_t>(*text++));
@@ -106,34 +125,41 @@ class TerminalView {
   }
 
  private:
+  // VT100パーサーの状態
+  // kGround: 通常文字入力待ち
+  // kEscape: ESC受信後
+  // kCsi:    ESC[ 受信後（CSIシーケンス収集中）
   enum class ParseState { kGround, kEscape, kCsi };
 
   LGFX* display_ = nullptr;
-  std::vector<Cell> cells_;
-  std::vector<bool> dirty_rows_;
-  uint16_t cols_ = 0;
-  uint16_t rows_ = 0;
-  uint16_t cursor_col_ = 0;
-  uint16_t cursor_row_ = 0;
-  uint16_t saved_col_ = 0;
-  uint16_t saved_row_ = 0;
-  uint16_t current_fg_ = kDefaultForeground;
-  uint16_t current_bg_ = kDefaultBackground;
-  bool bold_ = false;
-  int fg_index_ = -1;
-  int bg_index_ = -1;
-  bool bg_bright_ = false;
-  bool inverse_ = false;
-  bool cursor_visible_ = true;
-  bool blink_state_ = true;
-  uint32_t last_blink_ms_ = 0;
-  ParseState state_ = ParseState::kGround;
-  std::string csi_buffer_;
+  std::vector<Cell> cells_;        // 全セルの配列（row * cols_ + col でインデックス）
+  std::vector<bool> dirty_rows_;   // 再描画が必要な行のフラグ
+  uint16_t cols_ = 0;              // 画面の列数
+  uint16_t rows_ = 0;              // 画面の行数
+  uint16_t cursor_col_ = 0;        // 現在のカーソル列
+  uint16_t cursor_row_ = 0;        // 現在のカーソル行
+  uint16_t saved_col_ = 0;         // 保存されたカーソル列（ESC s / ESC 7 で保存）
+  uint16_t saved_row_ = 0;         // 保存されたカーソル行
+  uint16_t current_fg_ = kDefaultForeground; // 現在の文字色
+  uint16_t current_bg_ = kDefaultBackground; // 現在の背景色
+  bool bold_ = false;              // 太字属性
+  int fg_index_ = -1;              // ANSIカラーインデックス（-1 = デフォルト）
+  int bg_index_ = -1;              // ANSI背景カラーインデックス（-1 = デフォルト）
+  bool bg_bright_ = false;         // 背景色のブライト属性
+  bool inverse_ = false;           // 反転属性（文字色と背景色を入れ替え）
+  bool cursor_visible_ = true;     // カーソルの表示/非表示
+  bool blink_state_ = true;        // 点滅の現在状態（true=カーソル表示中）
+  uint32_t last_blink_ms_ = 0;     // 前回の点滅切り替え時刻
+  ParseState state_ = ParseState::kGround; // 現在のパーサー状態
+  std::string csi_buffer_;         // CSIシーケンスのパラメータ蓄積バッファ
 
+  // (col, row) のセルへの参照を返す
   Cell& cell(uint16_t col, uint16_t row) {
     return cells_[static_cast<size_t>(row) * cols_ + col];
   }
 
+  // 通常入力状態（kGround）でのバイト処理。
+  // 制御文字（CR/LF/BS/TAB/ESC）と表示可能文字を振り分ける。
   void handleGround(uint8_t byte) {
     switch (byte) {
       case 0x1B:
@@ -166,6 +192,8 @@ class TerminalView {
     }
   }
 
+  // ESC受信後のバイト処理。
+  // '[' → CSI開始、'7'/'8' → カーソル保存/復元（DEC）、'c' → ターミナルリセット
   void handleEscape(uint8_t byte) {
     switch (byte) {
       case '[':
@@ -191,6 +219,9 @@ class TerminalView {
     }
   }
 
+  // CSIシーケンス収集中のバイト処理。
+  // パラメータ文字（0-9, ';', '?'）はバッファに蓄積し、
+  // それ以外のバイトをコマンドとして executeCsi() に渡す。
   void handleCsi(uint8_t byte) {
     if ((byte >= '0' && byte <= '9') || byte == ';' || byte == '?') {
       if (csi_buffer_.size() < kMaxCsiBufferSize) {
@@ -203,6 +234,9 @@ class TerminalView {
     state_ = ParseState::kGround;
   }
 
+  // CSIコマンドを解析して実行する。
+  // 対応コマンド: A/B/C/D（カーソル移動）、H/f（位置指定）、
+  //              J（画面消去）、K（行消去）、m（SGR）、s/u（保存/復元）
   void executeCsi(char command) {
     bool private_mode = !csi_buffer_.empty() && csi_buffer_.front() == '?';
     std::string payload = private_mode ? csi_buffer_.substr(1) : csi_buffer_;
@@ -257,6 +291,8 @@ class TerminalView {
     }
   }
 
+  // CSIパラメータ文字列をセミコロン区切りで整数配列に変換する。
+  // 空フィールドは 0 として扱う。
   std::vector<int> parseParameters(const std::string& payload) const {
     if (payload.empty()) {
       return {};
@@ -276,11 +312,15 @@ class TerminalView {
     return params;
   }
 
+  // params が空または非正の場合は fallback を、それ以外は params[0] を返す。
+  // カーソル移動量など「省略時は1」の引数に使用する。
   uint16_t clampCount(const std::vector<int>& params, uint16_t fallback) const {
     int count = params.empty() || params.front() <= 0 ? fallback : params.front();
     return static_cast<uint16_t>(std::max(0, count));
   }
 
+  // SGR (Select Graphic Rendition) エスケープシーケンスを処理し、
+  // 文字色・背景色・太字・反転などの属性を更新する。
   void applySelectGraphicRendition(const std::vector<int>& params) {
     if (params.empty()) {
       resetAttributes();
@@ -342,6 +382,8 @@ class TerminalView {
     }
   }
 
+  // ANSIカラーインデックス（0-7）をRGB565色値に変換する。
+  // bright=true でブライトカラー、background=true で背景色扱い（黒の処理が異なる）。
   uint16_t mapAnsiColor(int index, bool bright, bool background) const {
     static constexpr uint16_t colors[8] = {
         TFT_BLACK, TFT_RED, TFT_GREEN, TFT_YELLOW,
@@ -365,6 +407,7 @@ class TerminalView {
     return color;
   }
 
+  // SGR属性をすべてデフォルト値にリセットする。
   void resetAttributes() {
     bold_ = false;
     fg_index_ = -1;
@@ -375,6 +418,10 @@ class TerminalView {
     current_bg_ = kDefaultBackground;
   }
 
+  // ED（Erase in Display）コマンドを実行する。
+  // mode 0: カーソル位置から画面末尾まで消去
+  // mode 1: 画面先頭からカーソル位置まで消去
+  // mode 2: 画面全体を消去してカーソルを原点に移動
   void eraseInDisplay(int mode) {
     switch (mode) {
       case 2:
@@ -401,6 +448,10 @@ class TerminalView {
     }
   }
 
+  // EL（Erase in Line）コマンドを実行する。
+  // mode 0: カーソル位置から行末まで消去
+  // mode 1: 行頭からカーソル位置まで消去
+  // mode 2: 行全体を消去
   void eraseInLine(int mode) {
     switch (mode) {
       case 2:
@@ -422,6 +473,7 @@ class TerminalView {
     }
   }
 
+  // 全セルをデフォルト状態にクリアする。
   void clearAll() {
     for (uint16_t row = 0; row < rows_; ++row) {
       for (uint16_t col = 0; col < cols_; ++col) {
@@ -430,12 +482,15 @@ class TerminalView {
     }
   }
 
+  // 指定セルをデフォルト状態にリセットし、行をダーティとしてマークする。
   void clearCell(uint16_t col, uint16_t row) {
     Cell& target = cell(col, row);
     target = Cell{};
     markCellDirty(row);
   }
 
+  // 現在のカーソル位置に文字を書き込み、カーソルを1列進める。
+  // 行末に達した場合は改行する。
   void putCharacter(char ch) {
     Cell& target = cell(cursor_col_, cursor_row_);
     target.ch = ch;
@@ -450,6 +505,7 @@ class TerminalView {
     }
   }
 
+  // カーソルを指定位置に移動する。境界値クランプを行い、関連行をダーティとしてマークする。
   void setCursor(uint16_t row, uint16_t col) {
     uint16_t old_row = cursor_row_;
     cursor_row_ = std::min<uint16_t>(row, rows_ - 1);
@@ -458,6 +514,7 @@ class TerminalView {
     markCellDirty(cursor_row_);
   }
 
+  // 現在のカーソル位置から相対的にカーソルを移動する。画面端でクランプする。
   void moveCursorRelative(int row_delta, int col_delta) {
     int row = static_cast<int>(cursor_row_) + row_delta;
     int col = static_cast<int>(cursor_col_) + col_delta;
@@ -466,6 +523,7 @@ class TerminalView {
     setCursor(static_cast<uint16_t>(row), static_cast<uint16_t>(col));
   }
 
+  // 改行処理。カーソルを行頭に戻し、最終行なら画面全体を1行上にスクロールする。
   void newLine() {
     uint16_t old_row = cursor_row_;
     cursor_col_ = 0;
@@ -478,6 +536,7 @@ class TerminalView {
     markCellDirty(cursor_row_);
   }
 
+  // 画面全体を1行上にスクロールする。最終行は空セルで埋める。
   void scrollUp() {
     for (uint16_t row = 1; row < rows_; ++row) {
       for (uint16_t col = 0; col < cols_; ++col) {
@@ -491,12 +550,15 @@ class TerminalView {
     dirty_rows_[rows_ - 1] = true;
   }
 
+  // ターミナルを完全リセットする（画面クリア・属性リセット・カーソル原点移動）。
   void resetTerminal() {
     clearAll();
     resetAttributes();
     setCursor(0, 0);
   }
 
+  // 指定セルをTFTに描画する。
+  // show_cursor=true のとき前景色と背景色を入れ替えてカーソルを表現する。
   void drawCell(uint16_t col, uint16_t row, bool show_cursor) {
     const Cell& source = cell(col, row);
     uint16_t fg = source.fg;
@@ -513,6 +575,7 @@ class TerminalView {
     display_->print(source.ch);
   }
 
+  // 指定行をダーティとしてマークする（境界チェックあり）。
   void markCellDirty(uint16_t row) {
     if (row < dirty_rows_.size()) {
       dirty_rows_[row] = true;
@@ -520,29 +583,35 @@ class TerminalView {
   }
 };
 
-LGFX display;
-TerminalView terminal_view;
-HardwareSerial target_uart(1);
+// グローバルオブジェクト
+LGFX display;                         // LovyanGFX ディスプレイドライバ
+TerminalView terminal_view;           // VT100 ターミナル表示管理
+HardwareSerial target_uart(1);        // UART1（外部デバイスとの通信用）
 
+// 初期化処理。USB CDC・ターミナル・UART1 を順に起動する。
 void setup() {
-  Serial.begin(kUsbBaudRate);
-  delay(200);
+  Serial.begin(kUsbBaudRate);         // USB CDC 開始
+  delay(200);                         // USB列挙を待つ
 
-  terminal_view.begin(display);
+  terminal_view.begin(display);       // ディスプレイ初期化・起動メッセージ表示
 
-  target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin);
+  target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin); // UART1 開始
 
   Serial.println();
   Serial.println("Elecrow VT100 monitor booted.");
 }
 
+// メインループ。UART1受信 → 液晶＋USB転送、USB受信 → UART1転送＋ローカルエコー、
+// 最後に差分描画を行う。
 void loop() {
+  // UART1（外部デバイス）からの受信データを液晶に表示し、USBにも中継する
   while (target_uart.available() > 0) {
     const uint8_t byte = static_cast<uint8_t>(target_uart.read());
     terminal_view.feed(byte);
     Serial.write(byte);
   }
 
+  // USB CDC（PC）からの入力データをUART1に転送し、ローカルエコーが有効なら液晶にも表示する
   while (Serial.available() > 0) {
     const uint8_t byte = static_cast<uint8_t>(Serial.read());
     target_uart.write(byte);
@@ -551,6 +620,6 @@ void loop() {
     }
   }
 
-  terminal_view.render();
-  delay(kLoopDelayMs);
+  terminal_view.render();  // ダーティ行のみ再描画
+  delay(kLoopDelayMs);     // CPUを解放して他処理に時間を与える
 }
