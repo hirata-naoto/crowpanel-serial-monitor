@@ -94,7 +94,8 @@ GND ──────────────────── GND（共通グ
    |---------|---|
    | Board | ESP32S3 Dev Module |
    | USB CDC On Boot | Enabled |
-   | Flash Size | 16MB (128Mb) |
+   | Flash Size | 4MB (32Mb) |
+   | Partition Scheme | Huge APP |
    | PSRAM | OPI PSRAM |
 
 4. CrowPanel を USB で接続し、**Tools → Port** で正しいポートを選択します。
