@@ -274,10 +274,13 @@ class TerminalView {
 
   // OSCシーケンス内でESCを受信した後のバイト処理。
   // '\' (ST: String Terminator) ならシーケンス終了。
+  // ESC が連続した場合は kOscEsc にとどまる（ESC ESC \ の対応）。
   // それ以外はOSC収集継続。
   void handleOscEsc(uint8_t byte) {
     if (byte == '\\') {
       state_ = ParseState::kGround;
+    } else if (byte == 0x1B) {
+      // 連続ESCの場合はkOscEscにとどまる
     } else {
       state_ = ParseState::kOsc;
     }
