@@ -87,6 +87,15 @@ class TerminalView {
       case ParseState::kCsi:
         handleCsi(byte);
         break;
+      case ParseState::kEscapeIntermediate:
+        handleEscapeIntermediate(byte);
+        break;
+      case ParseState::kOsc:
+        handleOsc(byte);
+        break;
+      case ParseState::kOscEsc:
+        handleOscEsc(byte);
+        break;
     }
   }
 
@@ -124,10 +133,13 @@ class TerminalView {
 
  private:
   // VT100パーサーの状態
-  // kGround: 通常文字入力待ち
-  // kEscape: ESC受信後
-  // kCsi:    ESC[ 受信後（CSIシーケンス収集中）
-  enum class ParseState { kGround, kEscape, kCsi };
+  // kGround:              通常文字入力待ち
+  // kEscape:              ESC受信後
+  // kCsi:                 ESC[ 受信後（CSIシーケンス収集中）
+  // kEscapeIntermediate:  ESC ( / ) / * / + 受信後（文字セット指定: 後続1バイトを消費して無視）
+  // kOsc:                 ESC] 受信後（OSCシーケンス収集中: BELまたはST終端まで無視）
+  // kOscEsc:              OSC収集中にESCを受信した後（STの '\' を確認中）
+  enum class ParseState { kGround, kEscape, kCsi, kEscapeIntermediate, kOsc, kOscEsc };
 
   LGFX* display_ = nullptr;
   std::vector<Cell> cells_;        // 全セルの配列（row * cols_ + col でインデックス）
@@ -192,6 +204,8 @@ class TerminalView {
 
   // ESC受信後のバイト処理。
   // '[' → CSI開始、'7'/'8' → カーソル保存/復元（DEC）、'c' → ターミナルリセット
+  // '('/')''*''+' → 文字セット指定（後続1バイト消費して無視）
+  // ']' → OSCシーケンス開始
   void handleEscape(uint8_t byte) {
     switch (byte) {
       case '[':
@@ -210,6 +224,15 @@ class TerminalView {
       case 'c':
         resetTerminal();
         state_ = ParseState::kGround;
+        return;
+      case '(':
+      case ')':
+      case '*':
+      case '+':
+        state_ = ParseState::kEscapeIntermediate;
+        return;
+      case ']':
+        state_ = ParseState::kOsc;
         return;
       default:
         state_ = ParseState::kGround;
@@ -230,6 +253,34 @@ class TerminalView {
 
     executeCsi(static_cast<char>(byte));
     state_ = ParseState::kGround;
+  }
+
+  // 文字セット指定シーケンス（ESC ( / ) / * / +）の後続バイト処理。
+  // 指定文字セットは無視し、後続の1バイトを消費してkGroundに戻る。
+  void handleEscapeIntermediate(uint8_t /*byte*/) {
+    state_ = ParseState::kGround;
+  }
+
+  // OSCシーケンス収集中のバイト処理。
+  // BEL (0x07) でシーケンス終了、ESC (0x1B) はST終端の可能性があるため
+  // kOscEsc に遷移する。それ以外のバイトはすべて無視する。
+  void handleOsc(uint8_t byte) {
+    if (byte == 0x07) {
+      state_ = ParseState::kGround;
+    } else if (byte == 0x1B) {
+      state_ = ParseState::kOscEsc;
+    }
+  }
+
+  // OSCシーケンス内でESCを受信した後のバイト処理。
+  // '\' (ST: String Terminator) ならシーケンス終了。
+  // それ以外はOSC収集継続。
+  void handleOscEsc(uint8_t byte) {
+    if (byte == '\\') {
+      state_ = ParseState::kGround;
+    } else {
+      state_ = ParseState::kOsc;
+    }
   }
 
   // CSIコマンドを解析して実行する。
