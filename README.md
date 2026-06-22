@@ -45,7 +45,7 @@ GND ──────────────────── GND（共通グ
 
 ---
 
-## 設定パラメータ（`src/main.cpp`）
+## 設定パラメータ（`main.ino`）
 
 | 定数 | デフォルト値 | 説明 |
 |------|-------------|------|
@@ -65,22 +65,45 @@ GND ──────────────────── GND（共通グ
 
 ## ビルド方法
 
-[PlatformIO](https://platformio.org/) を使用します。
+[Arduino IDE 2.x](https://www.arduino.cc/en/software) を使用します。
 
-```bash
-# ビルド
-pio run
+### 1. ESP32 ボードサポートのインストール
 
-# ボードへ書き込み
-pio run --target upload
-```
+1. Arduino IDE の **File → Preferences** を開き、**Additional boards manager URLs** に以下を追加します。  
+   ```
+   https://espressif.github.io/arduino-esp32/package_esp32_index.json
+   ```
+2. **Tools → Board → Boards Manager** を開き、`esp32` を検索してインストールします。
+
+### 2. ライブラリのインストール
+
+**Sketch → Include Library → Manage Libraries** を開き、以下のライブラリをインストールします。
+
+| ライブラリ | バージョン |
+|-----------|-----------|
+| LovyanGFX | 最新版 |
+
+### 3. ボードの選択と書き込み
+
+1. **Tools → Board → esp32 → ESP32S3 Dev Module** を選択します。
+2. 主要な設定例は以下の通りです（実際の環境に合わせて調整してください）。
+
+   | 設定項目 | 値 |
+   |---------|---|
+   | Board | ESP32S3 Dev Module |
+   | USB CDC On Boot | Enabled |
+   | Flash Size | 16MB (128Mb) |
+   | PSRAM | OPI PSRAM |
+
+3. CrowPanel を USB で接続し、**Tools → Port** で正しいポートを選択します。
+4. **Sketch → Upload**（または `Ctrl+U`）でボードに書き込みます。
 
 ---
 
 ## 使い方
 
 1. 外部デバイスを GPIO43/44 に接続し、電源を入れます。
-2. CrowPanel にこのファームウェアを書き込みます。
+2. Arduino IDE で **Sketch → Upload** を実行して CrowPanel にファームウェアを書き込みます。
 3. 起動後、外部デバイスのUART1出力が液晶に表示されます。
 
 ---
