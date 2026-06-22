@@ -279,9 +279,8 @@ class TerminalView {
   void handleOscEsc(uint8_t byte) {
     if (byte == '\\') {
       state_ = ParseState::kGround;
-    } else if (byte == 0x1B) {
-      // 連続ESCの場合はkOscEscにとどまる
-    } else {
+    } else if (byte != 0x1B) {
+      // ESC以外はOSC収集に戻る（ESCの場合はkOscEscにとどまる）
       state_ = ParseState::kOsc;
     }
   }
