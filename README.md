@@ -86,17 +86,20 @@ GND ──────────────────── GND（共通グ
 ### 3. ボードの選択と書き込み
 
 1. **Tools → Board → esp32 → ESP32S3 Dev Module** を選択します。
-2. 主要な設定例は以下の通りです（実際の環境に合わせて調整してください）。
+2. ボード設定は Elecrow 公式の以下ページを基準にしてください。  
+   https://www.elecrow.com/wiki/ESP32_Display_5.0-inch_HMI_Arduino_Tutorial.html
+3. 主要な設定例は以下の通りです（実際の環境に合わせて調整してください）。
 
    | 設定項目 | 値 |
    |---------|---|
    | Board | ESP32S3 Dev Module |
    | USB CDC On Boot | Enabled |
-   | Flash Size | 16MB (128Mb) |
+   | Flash Size | 4MB (32Mb) |
+   | Partition Scheme | Huge APP |
    | PSRAM | OPI PSRAM |
 
-3. CrowPanel を USB で接続し、**Tools → Port** で正しいポートを選択します。
-4. **Sketch → Upload**（または `Ctrl+U`）でボードに書き込みます。
+4. CrowPanel を USB で接続し、**Tools → Port** で正しいポートを選択します。
+5. **Sketch → Upload**（または `Ctrl+U`）でボードに書き込みます。
 
 ---
 
