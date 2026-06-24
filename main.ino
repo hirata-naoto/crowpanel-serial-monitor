@@ -13,19 +13,19 @@
 
 namespace {
 // ----- 通信設定 -----
-constexpr uint32_t kTargetBaudRate = 115200; // UART1（外部デバイスとの通信）のボーレート
-constexpr int kTargetRxPin = 44;             // UART1 RXピン（外部デバイスTXと接続）
-constexpr int kTargetTxPin = 43;             // UART1 TXピン（外部デバイスRXと接続）
+constexpr uint32_t kTargetBaudRate = 115200;  // UART1（外部デバイスとの通信）のボーレート
+constexpr int kTargetRxPin = 44;              // UART1 RXピン（外部デバイスTXと接続）
+constexpr int kTargetTxPin = 43;              // UART1 TXピン（外部デバイスRXと接続）
 
 // ----- 表示設定 -----
-constexpr uint8_t kCellWidth = 12;           // 1文字あたりの幅（ピクセル）
-constexpr uint8_t kCellHeight = 16;          // 1文字あたりの高さ（ピクセル）
-constexpr uint8_t kTabWidth = 8;             // タブストップの幅（文字数）
-constexpr size_t kMaxCsiBufferSize = 32;     // CSIシーケンスの最大バッファサイズ
-constexpr uint32_t kCursorBlinkMs = 500;     // カーソル点滅の周期（ミリ秒）
-constexpr uint32_t kLoopDelayMs = 2;         // メインループの待機時間（ミリ秒）
-constexpr uint16_t kDefaultForeground = TFT_GREEN; // デフォルト文字色（緑）
-constexpr uint16_t kDefaultBackground = TFT_BLACK; // デフォルト背景色（黒）
+constexpr uint8_t kCellWidth = 12;        // 1文字あたりの幅（ピクセル）
+constexpr uint8_t kCellHeight = 16;       // 1文字あたりの高さ（ピクセル）
+constexpr uint8_t kTabWidth = 8;          // タブストップの幅（文字数）
+constexpr size_t kMaxCsiBufferSize = 32;  // CSIシーケンスの最大バッファサイズ
+constexpr uint32_t kCursorBlinkMs = 500;  // カーソル点滅の周期（ミリ秒）
+constexpr uint32_t kLoopDelayMs = 2;      // メインループの待機時間（ミリ秒）
+constexpr uint16_t kDefaultForeground = TFT_GREEN;  // デフォルト文字色（緑）
+constexpr uint16_t kDefaultBackground = TFT_BLACK;  // デフォルト背景色（黒）
 }  // namespace
 
 // TFT液晶へのターミナル描画を管理するクラス。
@@ -118,7 +118,8 @@ class TerminalView {
         continue;
       }
       for (uint16_t col = 0; col < cols_; ++col) {
-        drawCell(col, row, cursor_visible_ && blink_state_ && row == cursor_row_ && col == cursor_col_);
+        drawCell(col, row,
+                 cursor_visible_ && blink_state_ && row == cursor_row_ && col == cursor_col_);
       }
       dirty_rows_[row] = false;
     }
@@ -142,26 +143,26 @@ class TerminalView {
   enum class ParseState { kGround, kEscape, kCsi, kEscapeIntermediate, kOsc, kOscEsc };
 
   LGFX* display_ = nullptr;
-  std::vector<Cell> cells_;        // 全セルの配列（row * cols_ + col でインデックス）
-  std::vector<bool> dirty_rows_;   // 再描画が必要な行のフラグ
-  uint16_t cols_ = 0;              // 画面の列数
-  uint16_t rows_ = 0;              // 画面の行数
-  uint16_t cursor_col_ = 0;        // 現在のカーソル列
-  uint16_t cursor_row_ = 0;        // 現在のカーソル行
-  uint16_t saved_col_ = 0;         // 保存されたカーソル列（ESC s / ESC 7 で保存）
-  uint16_t saved_row_ = 0;         // 保存されたカーソル行
-  uint16_t current_fg_ = kDefaultForeground; // 現在の文字色
-  uint16_t current_bg_ = kDefaultBackground; // 現在の背景色
-  bool bold_ = false;              // 太字属性
-  int fg_index_ = -1;              // ANSIカラーインデックス（-1 = デフォルト）
-  int bg_index_ = -1;              // ANSI背景カラーインデックス（-1 = デフォルト）
-  bool bg_bright_ = false;         // 背景色のブライト属性
-  bool inverse_ = false;           // 反転属性（文字色と背景色を入れ替え）
-  bool cursor_visible_ = true;     // カーソルの表示/非表示
-  bool blink_state_ = true;        // 点滅の現在状態（true=カーソル表示中）
-  uint32_t last_blink_ms_ = 0;     // 前回の点滅切り替え時刻
-  ParseState state_ = ParseState::kGround; // 現在のパーサー状態
-  std::string csi_buffer_;         // CSIシーケンスのパラメータ蓄積バッファ
+  std::vector<Cell> cells_;       // 全セルの配列（row * cols_ + col でインデックス）
+  std::vector<bool> dirty_rows_;  // 再描画が必要な行のフラグ
+  uint16_t cols_ = 0;             // 画面の列数
+  uint16_t rows_ = 0;             // 画面の行数
+  uint16_t cursor_col_ = 0;       // 現在のカーソル列
+  uint16_t cursor_row_ = 0;       // 現在のカーソル行
+  uint16_t saved_col_ = 0;        // 保存されたカーソル列（ESC s / ESC 7 で保存）
+  uint16_t saved_row_ = 0;        // 保存されたカーソル行
+  uint16_t current_fg_ = kDefaultForeground;  // 現在の文字色
+  uint16_t current_bg_ = kDefaultBackground;  // 現在の背景色
+  bool bold_ = false;                         // 太字属性
+  int fg_index_ = -1;           // ANSIカラーインデックス（-1 = デフォルト）
+  int bg_index_ = -1;           // ANSI背景カラーインデックス（-1 = デフォルト）
+  bool bg_bright_ = false;      // 背景色のブライト属性
+  bool inverse_ = false;        // 反転属性（文字色と背景色を入れ替え）
+  bool cursor_visible_ = true;  // カーソルの表示/非表示
+  bool blink_state_ = true;     // 点滅の現在状態（true=カーソル表示中）
+  uint32_t last_blink_ms_ = 0;  // 前回の点滅切り替え時刻
+  ParseState state_ = ParseState::kGround;  // 現在のパーサー状態
+  std::string csi_buffer_;  // CSIシーケンスのパラメータ蓄積バッファ
 
   // (col, row) のセルへの参照を返す
   Cell& cell(uint16_t col, uint16_t row) {
@@ -353,7 +354,8 @@ class TerminalView {
     size_t start = 0;
     while (start <= payload.size()) {
       size_t end = payload.find(';', start);
-      std::string token = payload.substr(start, end == std::string::npos ? std::string::npos : end - start);
+      std::string token =
+          payload.substr(start, end == std::string::npos ? std::string::npos : end - start);
       params.push_back(token.empty() ? 0 : std::atoi(token.c_str()));
       if (end == std::string::npos) {
         break;
@@ -437,18 +439,17 @@ class TerminalView {
   // bright=true でブライトカラー、background=true で背景色扱い（黒の処理が異なる）。
   uint16_t mapAnsiColor(int index, bool bright, bool background) const {
     static constexpr uint16_t colors[8] = {
-        TFT_BLACK, TFT_RED, TFT_GREEN, TFT_YELLOW,
-        TFT_BLUE, TFT_MAGENTA, TFT_CYAN, TFT_WHITE,
+        TFT_BLACK, TFT_RED, TFT_GREEN, TFT_YELLOW, TFT_BLUE, TFT_MAGENTA, TFT_CYAN, TFT_WHITE,
     };
     static constexpr uint16_t bright_colors[8] = {
-        0x7BEF,   // bright black
-        0xFBEA,   // bright red
-        0x87F0,   // bright green
-        0xFFF0,   // bright yellow
-        0x7D7C,   // bright blue
-        0xFD5F,   // bright magenta
-        0x87FF,   // bright cyan
-        TFT_WHITE // bright white
+        0x7BEF,    // bright black
+        0xFBEA,    // bright red
+        0x87F0,    // bright green
+        0xFFF0,    // bright yellow
+        0x7D7C,    // bright blue
+        0xFD5F,    // bright magenta
+        0x87FF,    // bright cyan
+        TFT_WHITE  // bright white
     };
 
     uint16_t color = bright ? bright_colors[index % 8] : colors[index % 8];
@@ -635,14 +636,14 @@ class TerminalView {
 };
 
 // グローバルオブジェクト
-LGFX display;                         // LovyanGFX ディスプレイドライバ
-TerminalView terminal_view;           // VT100 ターミナル表示管理
-HardwareSerial target_uart(1);        // UART1（外部デバイスとの通信用）
+LGFX display;                   // LovyanGFX ディスプレイドライバ
+TerminalView terminal_view;     // VT100 ターミナル表示管理
+HardwareSerial target_uart(1);  // UART1（外部デバイスとの通信用）
 
 // 初期化処理。ターミナル・UART1 を順に起動する。
 void setup() {
-  terminal_view.begin(display);       // ディスプレイ初期化・起動メッセージ表示
-  target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin); // UART1 開始
+  terminal_view.begin(display);  // ディスプレイ初期化・起動メッセージ表示
+  target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin);  // UART1 開始
 }
 
 // メインループ。UART1受信データを液晶に表示し、最後に差分描画を行う。
