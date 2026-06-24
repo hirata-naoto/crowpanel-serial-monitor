@@ -103,6 +103,22 @@ GND ──────────────────── GND（共通グ
 
 ---
 
+## CI / Lint
+
+GitHub Actions では以下を自動実行します。
+
+- **Arduino Compile**: ESP32-S3 向けのスケッチコンパイル確認
+- **Clang Format**: `main.ino` / `*.h` / `*.hpp` / `*.cpp` のフォーマットチェック
+
+ローカルでフォーマットを確認する場合は、リポジトリルートで以下を実行してください。
+
+```bash
+find . -maxdepth 1 \( -name "*.ino" -o -name "*.h" -o -name "*.hpp" -o -name "*.cpp" \) -print0 \
+  | xargs -0 -r clang-format --dry-run --Werror
+```
+
+---
+
 ## 使い方
 
 1. 外部デバイスを GPIO43/44 に接続し、電源を入れます。
