@@ -658,10 +658,13 @@ void setup() {
 // メインループ。UART1受信データを液晶に表示し、最後に差分描画を行う。
 void loop() {
   size_t usb_buffer_len = 0;
-  while (target_uart.available() > 0 && usb_buffer_len < kUsbPassthroughChunkSize) {
-    const uint8_t byte = static_cast<uint8_t>(target_uart.read());
-    terminal_view.feed(byte);
-    usb_passthrough_buffer[usb_buffer_len++] = byte;
+  const size_t available_bytes = static_cast<size_t>(target_uart.available());
+  if (available_bytes > 0) {
+    const size_t bytes_to_read = std::min(available_bytes, kUsbPassthroughChunkSize);
+    usb_buffer_len = target_uart.readBytes(usb_passthrough_buffer, bytes_to_read);
+    for (size_t i = 0; i < usb_buffer_len; ++i) {
+      terminal_view.feed(usb_passthrough_buffer[i]);
+    }
   }
 
   if (usb_buffer_len > 0 && Serial) {
