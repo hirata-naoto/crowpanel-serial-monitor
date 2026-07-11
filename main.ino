@@ -649,7 +649,11 @@ void setup() {
   terminal_view.begin(display);      // ディスプレイ初期化・起動メッセージ表示
   Serial.begin(kUsbSerialBaudRate);  // USBシリアル開始
   const uint32_t usb_serial_wait_start = millis();
-  while (!Serial && (millis() - usb_serial_wait_start) < kUsbSerialWaitTimeoutMs) {
+  while (!Serial) {
+    const uint32_t elapsed_ms = millis() - usb_serial_wait_start;
+    if (elapsed_ms >= kUsbSerialWaitTimeoutMs) {
+      break;
+    }
     delay(1);
   }
   target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin);  // UART1 開始
@@ -658,9 +662,10 @@ void setup() {
 // メインループ。UART1受信データを液晶に表示し、最後に差分描画を行う。
 void loop() {
   size_t usb_buffer_len = 0;
-  const size_t available_bytes = static_cast<size_t>(target_uart.available());
+  const int available_bytes = target_uart.available();
   if (available_bytes > 0) {
-    const size_t bytes_to_read = std::min(available_bytes, kUsbPassthroughChunkSize);
+    const size_t bytes_to_read =
+        std::min(static_cast<size_t>(available_bytes), kUsbPassthroughChunkSize);
     usb_buffer_len = target_uart.readBytes(usb_passthrough_buffer, bytes_to_read);
     for (size_t i = 0; i < usb_buffer_len; ++i) {
       terminal_view.feed(usb_passthrough_buffer[i]);
