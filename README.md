@@ -53,6 +53,8 @@ GND ──────────────────── GND（共通グ
 |------|-------------|------|
 | `kTargetBaudRate` | 115200 | UART1（外部デバイスとの通信）のボーレート |
 | `kUsbSerialBaudRate` | 115200 | USBシリアル（PC側モニター用）のボーレート |
+| `kUsbSerialWaitTimeoutMs` | 1000 | USBシリアル接続待機の最大時間（ミリ秒） |
+| `kUsbPassthroughChunkSize` | 64 | USBシリアルへまとめて転送する最大バイト数 |
 | `kTargetRxPin` | 44 | UART1 RXピン番号 |
 | `kTargetTxPin` | 43 | UART1 TXピン番号 |
 | `kCellWidth` | 12 | 1文字の幅（ピクセル） |

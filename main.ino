@@ -15,6 +15,8 @@ namespace {
 // ----- 通信設定 -----
 constexpr uint32_t kTargetBaudRate = 115200;  // UART1（外部デバイスとの通信）のボーレート
 constexpr uint32_t kUsbSerialBaudRate = 115200;  // USBシリアル（PC側モニター用）のボーレート
+constexpr uint32_t kUsbSerialWaitTimeoutMs = 1000;  // USBシリアル接続待機の最大時間（ミリ秒）
+constexpr size_t kUsbPassthroughChunkSize = 64;  // USBへまとめて送る最大バイト数
 constexpr int kTargetRxPin = 44;  // UART1 RXピン（外部デバイスTXと接続）
 constexpr int kTargetTxPin = 43;  // UART1 TXピン（外部デバイスRXと接続）
 
@@ -645,15 +647,25 @@ HardwareSerial target_uart(1);  // UART1（外部デバイスとの通信用）
 void setup() {
   terminal_view.begin(display);      // ディスプレイ初期化・起動メッセージ表示
   Serial.begin(kUsbSerialBaudRate);  // USBシリアル開始
+  const uint32_t wait_start = millis();
+  while (!Serial && (millis() - wait_start) < kUsbSerialWaitTimeoutMs) {
+    delay(1);
+  }
   target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin);  // UART1 開始
 }
 
 // メインループ。UART1受信データを液晶に表示し、最後に差分描画を行う。
 void loop() {
-  while (target_uart.available() > 0) {
+  uint8_t passthrough_buffer[kUsbPassthroughChunkSize];
+  size_t passthrough_len = 0;
+  while (target_uart.available() > 0 && passthrough_len < kUsbPassthroughChunkSize) {
     const uint8_t byte = static_cast<uint8_t>(target_uart.read());
     terminal_view.feed(byte);
-    Serial.write(byte);
+    passthrough_buffer[passthrough_len++] = byte;
+  }
+
+  if (passthrough_len > 0 && Serial) {
+    Serial.write(passthrough_buffer, passthrough_len);
   }
 
   terminal_view.render();  // ダーティ行のみ再描画
