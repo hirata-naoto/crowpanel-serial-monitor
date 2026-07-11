@@ -642,6 +642,7 @@ class TerminalView {
 LGFX display;                   // LovyanGFX ディスプレイドライバ
 TerminalView terminal_view;     // VT100 ターミナル表示管理
 HardwareSerial target_uart(1);  // UART1（外部デバイスとの通信用）
+uint8_t usb_passthrough_buffer[kUsbPassthroughChunkSize];  // UART1受信データのUSB転送バッファ
 
 // 初期化処理。ターミナル・UART1 を順に起動する。
 void setup() {
@@ -656,16 +657,15 @@ void setup() {
 
 // メインループ。UART1受信データを液晶に表示し、最後に差分描画を行う。
 void loop() {
-  uint8_t passthrough_buffer[kUsbPassthroughChunkSize];
   size_t passthrough_len = 0;
   while (target_uart.available() > 0 && passthrough_len < kUsbPassthroughChunkSize) {
     const uint8_t byte = static_cast<uint8_t>(target_uart.read());
     terminal_view.feed(byte);
-    passthrough_buffer[passthrough_len++] = byte;
+    usb_passthrough_buffer[passthrough_len++] = byte;
   }
 
   if (passthrough_len > 0 && Serial) {
-    Serial.write(passthrough_buffer, passthrough_len);
+    Serial.write(usb_passthrough_buffer, passthrough_len);
   }
 
   terminal_view.render();  // ダーティ行のみ再描画
