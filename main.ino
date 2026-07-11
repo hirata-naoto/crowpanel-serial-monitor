@@ -1,5 +1,5 @@
 // Elecrow CrowPanel 5インチ向け VT100 シリアルモニター
-// UART1 → TFT液晶ターミナル表示
+// UART1 → TFT液晶ターミナル表示 / USB(PC)へパススルー
 
 #include <Arduino.h>
 
@@ -14,8 +14,9 @@
 namespace {
 // ----- 通信設定 -----
 constexpr uint32_t kTargetBaudRate = 115200;  // UART1（外部デバイスとの通信）のボーレート
-constexpr int kTargetRxPin = 44;              // UART1 RXピン（外部デバイスTXと接続）
-constexpr int kTargetTxPin = 43;              // UART1 TXピン（外部デバイスRXと接続）
+constexpr uint32_t kUsbSerialBaudRate = 115200;  // USBシリアル（PC側モニター用）のボーレート
+constexpr int kTargetRxPin = 44;  // UART1 RXピン（外部デバイスTXと接続）
+constexpr int kTargetTxPin = 43;  // UART1 TXピン（外部デバイスRXと接続）
 
 // ----- 表示設定 -----
 constexpr uint8_t kCellWidth = 12;        // 1文字あたりの幅（ピクセル）
@@ -642,7 +643,8 @@ HardwareSerial target_uart(1);  // UART1（外部デバイスとの通信用）
 
 // 初期化処理。ターミナル・UART1 を順に起動する。
 void setup() {
-  terminal_view.begin(display);  // ディスプレイ初期化・起動メッセージ表示
+  terminal_view.begin(display);      // ディスプレイ初期化・起動メッセージ表示
+  Serial.begin(kUsbSerialBaudRate);  // USBシリアル開始
   target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin);  // UART1 開始
 }
 
@@ -651,6 +653,7 @@ void loop() {
   while (target_uart.available() > 0) {
     const uint8_t byte = static_cast<uint8_t>(target_uart.read());
     terminal_view.feed(byte);
+    Serial.write(byte);
   }
 
   terminal_view.render();  // ダーティ行のみ再描画
