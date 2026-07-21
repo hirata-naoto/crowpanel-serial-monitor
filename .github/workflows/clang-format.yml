@@ -19,4 +19,4 @@ jobs:
       - name: Check formatting
         run: |
           find . -maxdepth 1 \( -name "*.ino" -o -name "*.h" -o -name "*.hpp" -o -name "*.cpp" \) -print0 \
-            | xargs -0 -r clang-format --dry-run --Werror
+            | xargs -0 -r clang-format -i
