@@ -1,5 +1,5 @@
 // Elecrow CrowPanel 5インチ向け VT100 シリアルモニター
-// UART1 → TFT液晶ターミナル表示
+// UART1 → TFT液晶ターミナル表示 / USB(PC)へパススルー
 
 #include <Arduino.h>
 
@@ -14,8 +14,11 @@
 namespace {
 // ----- 通信設定 -----
 constexpr uint32_t kTargetBaudRate = 115200;  // UART1（外部デバイスとの通信）のボーレート
-constexpr int kTargetRxPin = 44;              // UART1 RXピン（外部デバイスTXと接続）
-constexpr int kTargetTxPin = 43;              // UART1 TXピン（外部デバイスRXと接続）
+constexpr uint32_t kUsbSerialBaudRate = 115200;  // USBシリアル（PC側モニター用）のボーレート
+constexpr uint32_t kUsbSerialWaitTimeoutMs = 1000;  // USBシリアル接続待機の最大時間（ミリ秒）
+constexpr size_t kUsbPassthroughChunkSize = 64;  // USBへまとめて送る最大バイト数
+constexpr int kTargetRxPin = 44;  // UART1 RXピン（外部デバイスTXと接続）
+constexpr int kTargetTxPin = 43;  // UART1 TXピン（外部デバイスRXと接続）
 
 // ----- 表示設定 -----
 constexpr uint8_t kCellWidth = 12;        // 1文字あたりの幅（ピクセル）
@@ -639,18 +642,38 @@ class TerminalView {
 LGFX display;                   // LovyanGFX ディスプレイドライバ
 TerminalView terminal_view;     // VT100 ターミナル表示管理
 HardwareSerial target_uart(1);  // UART1（外部デバイスとの通信用）
+uint8_t usb_passthrough_buffer[kUsbPassthroughChunkSize];  // UART1受信データのUSB転送バッファ
 
 // 初期化処理。ターミナル・UART1 を順に起動する。
 void setup() {
-  terminal_view.begin(display);  // ディスプレイ初期化・起動メッセージ表示
+  terminal_view.begin(display);      // ディスプレイ初期化・起動メッセージ表示
+  Serial.begin(kUsbSerialBaudRate);  // USBシリアル開始
+  const uint32_t usb_serial_wait_start = millis();
+  while (!Serial) {
+    const uint32_t elapsed_ms = millis() - usb_serial_wait_start;
+    if (elapsed_ms >= kUsbSerialWaitTimeoutMs) {
+      break;
+    }
+    delay(1);
+  }
   target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin);  // UART1 開始
 }
 
 // メインループ。UART1受信データを液晶に表示し、最後に差分描画を行う。
 void loop() {
-  while (target_uart.available() > 0) {
-    const uint8_t byte = static_cast<uint8_t>(target_uart.read());
-    terminal_view.feed(byte);
+  size_t usb_buffer_len = 0;
+  const int available_bytes = target_uart.available();
+  if (available_bytes > 0) {
+    const size_t bytes_to_read =
+        std::min(static_cast<size_t>(available_bytes), kUsbPassthroughChunkSize);
+    usb_buffer_len = target_uart.readBytes(usb_passthrough_buffer, bytes_to_read);
+    for (size_t i = 0; i < usb_buffer_len; ++i) {
+      terminal_view.feed(usb_passthrough_buffer[i]);
+    }
+  }
+
+  if (usb_buffer_len > 0 && Serial) {
+    Serial.write(usb_passthrough_buffer, usb_buffer_len);
   }
 
   terminal_view.render();  // ダーティ行のみ再描画
