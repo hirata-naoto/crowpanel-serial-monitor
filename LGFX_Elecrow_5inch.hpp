@@ -23,7 +23,7 @@ class LGFX : public lgfx::LGFX_Device {
             cfg.panel_height = 480;   // 表示高さ（ピクセル）
             cfg.offset_x = 0;         // X方向オフセット
             cfg.offset_y = 0;         // Y方向オフセット
-            panel_.config(cfg);
+            panel_.config( cfg );
         }
 
         // ----- RGB パラレルバス設定（データピン・同期信号・タイミング） -----
@@ -65,17 +65,17 @@ class LGFX : public lgfx::LGFX_Device {
             cfg.pclk_active_neg = 1;  // ピクセルクロック立ち下がりエッジでサンプリング
             cfg.de_idle_high = 0;
             cfg.pclk_idle_high = 0;
-            bus_.config(cfg);
+            bus_.config( cfg );
         }
-        panel_.setBus(&bus_);
+        panel_.setBus( &bus_ );
 
         // ----- バックライト設定（PWM制御, GPIO2） -----
         {
             auto cfg = backlight_.config();
             cfg.pin_bl = GPIO_NUM_2;  // バックライト PWM ピン
-            backlight_.config(cfg);
+            backlight_.config( cfg );
         }
-        panel_.light(&backlight_);
+        panel_.light( &backlight_ );
 
         // ----- タッチコントローラ設定（GT911, I2C1, addr=0x14） -----
         {
@@ -93,11 +93,11 @@ class LGFX : public lgfx::LGFX_Device {
             cfg.pin_scl = GPIO_NUM_20;  // I2C SCL ピン
             cfg.freq = 400000;          // I2C 通信速度: 400 kHz (Fast Mode)
             cfg.i2c_addr = 0x14;        // GT911 I2C アドレス
-            touch_.config(cfg);
-            panel_.setTouch(&touch_);
+            touch_.config( cfg );
+            panel_.setTouch( &touch_ );
         }
 
-        setPanel(&panel_);
+        setPanel( &panel_ );
     }
 
    private:
