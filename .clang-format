@@ -9,3 +9,4 @@ NamespaceIndentation: None
 AllowShortFunctionsOnASingleLine: Empty
 IndentCaseBlocks: false
 IndentCaseLabels: false
+SpacesInParentheses: true
