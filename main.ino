@@ -644,9 +644,11 @@ TerminalView terminal_view;     // VT100 ターミナル表示管理
 HardwareSerial target_uart(1);  // UART1（外部デバイスとの通信用）
 uint8_t usb_passthrough_buffer[kUsbPassthroughChunkSize];  // UART1受信データのUSB転送バッファ
 
-// 初期化処理。ターミナル・UART1 を順に起動する。
+// 初期化処理。ターミナル・UART1・USBシリアル を順に起動する。
 void setup() {
-  terminal_view.begin(display);      // ディスプレイ初期化・起動メッセージ表示
+  terminal_view.begin(display);  // ディスプレイ初期化・起動メッセージ表示
+  target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin);  // UART1 開始
+  target_uart.setTimeout(0);  // readBytes() がタイムアウト待ちでブロックしないよう設定
   Serial.begin(kUsbSerialBaudRate);  // USBシリアル開始
   const uint32_t usb_serial_wait_start = millis();
   while (!Serial) {
@@ -656,7 +658,6 @@ void setup() {
     }
     delay(1);
   }
-  target_uart.begin(kTargetBaudRate, SERIAL_8N1, kTargetRxPin, kTargetTxPin);  // UART1 開始
 }
 
 // メインループ。UART1受信データを液晶に表示し、最後に差分描画を行う。
