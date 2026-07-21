@@ -25,15 +25,15 @@ jobs:
           find . -maxdepth 1 \( -name "*.ino" -o -name "*.h" -o -name "*.hpp" -o -name "*.cpp" \) -print0 \
             | xargs -0 -r clang-format -i
 
-  - name: Commit and Push changes
-      run: |
-        # Commit only modified
-        if [ -n "$(git status --porcelain)" ]; then
-          git config --local user.email  "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add .
-          git commit -m "style: auto format with clang-format"
-          git push
-        else
-          echo "No changes to commit"
-        fi
+      - name: Commit and Push changes
+        run: |
+          # Commit only modified
+          if [ -n "$(git status --porcelain)" ]; then
+            git config --local user.email "action@github.com"
+            git config --local user.name "GitHub Action"
+            git add .
+            git commit -m "style: auto format with clang-format"
+            git push
+          else
+            echo "No changes to commit"
+          fi
